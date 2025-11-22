@@ -1,0 +1,9 @@
+{
+	"stream": {
+		"url": "UpfluenceStreamURL"
+	},
+	"server": {
+		"host": "localhost",
+		"port": 8080
+	}
+}
