@@ -2,25 +2,41 @@ package main
 
 import (
 	"log/slog"
+	"net/http"
 	"os"
+
 	"upfluence-stream-analyzer/config"
 )
 
-type App struct {
-	Config config.Config
-	Logger *slog.Logger
+// application holds the application configuration and dependencies
+type application struct {
+	config *config.Config
+	logger *slog.Logger
+	server *http.Server
 }
 
 func main() {
-	// Create the logger
+	// Initialize the logger
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	var cfg config.Config
+	logger.Info("Starting application")
 
-	// Get the configuration
+	// Load the config
+	var cfg config.Config
 	err := config.Load(&cfg)
 	if err != nil {
-		logger.Error("failed to load config", "err", err.Error())
+		logger.Error("Failed to load config", "err", err.Error())
 		os.Exit(1)
 	}
+
+	// Create and initialize the application
+	app := New(&cfg, logger)
+
+	// Run the application
+	if err := app.Run(); err != nil {
+		logger.Error("Failed to run application", "err", err.Error())
+		os.Exit(1)
+	}
+
+	logger.Info("Application stopped successfully")
 }
