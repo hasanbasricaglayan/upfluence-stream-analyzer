@@ -87,7 +87,7 @@ func (a *StreamAnalyzer) collectPosts(resultCh <-chan StreamResult) ([]models.Po
 		// Valid post
 		if result.Post != nil {
 			posts = append(posts, *result.Post)
-			a.logger.Info("Received post", "type", result.Post.Type, "data", fmt.Sprintf("%v", result.Post.Data))
+			a.logger.Debug("Received post", "type", result.Post.Type, "data", fmt.Sprintf("%v", result.Post.Data))
 		}
 	}
 
