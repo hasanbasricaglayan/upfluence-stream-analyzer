@@ -75,7 +75,7 @@ func (app *application) Run() error {
 		cancel()
 
 		// Create a context with timeout for the shutdown process itself
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
 
 		// Attempt graceful shutdown
