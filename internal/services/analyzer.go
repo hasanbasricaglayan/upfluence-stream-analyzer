@@ -32,10 +32,77 @@ func NewStreamAnalyzer(streamClient StreamService, logger *slog.Logger) *StreamA
 	}
 }
 
+// aggregator computes statistics incrementally without storing posts
+type aggregator struct {
+	totalPosts       int
+	minimumTimestamp int64
+	maximumTimestamp int64
+	dimensionSum     uint64
+	validCount       int64
+	dimension        string
+}
+
+// newAggregator creates a new aggregator
+func newAggregator(dimension string) *aggregator {
+	return &aggregator{
+		totalPosts:       0,
+		minimumTimestamp: 0,
+		maximumTimestamp: 0,
+		dimensionSum:     0,
+		validCount:       0,
+		dimension:        dimension,
+	}
+}
+
+// processPost updates the aggregator with a new post (incremental computation)
+func (agg *aggregator) processPost(post *models.PostPayload) {
+	// Increment total count
+	agg.totalPosts++
+
+	timestamp := post.Data.Timestamp
+
+	// Update min/max timestamps
+	if agg.totalPosts == 1 {
+		// First post
+		agg.minimumTimestamp = timestamp
+		agg.maximumTimestamp = timestamp
+	} else {
+		// Subsequent posts
+		if timestamp < agg.minimumTimestamp {
+			agg.minimumTimestamp = timestamp
+		}
+		if timestamp > agg.maximumTimestamp {
+			agg.maximumTimestamp = timestamp
+		}
+	}
+
+	// Update dimension statistics
+	if dimValue, ok := post.GetDimensionValue(agg.dimension); ok {
+		agg.dimensionSum += dimValue
+		agg.validCount++
+	}
+}
+
+// getResult computes the final result from accumulated statistics
+func (agg *aggregator) getResult() *models.AnalysisResult {
+	result := &models.AnalysisResult{
+		TotalPosts:       agg.totalPosts,
+		MinimumTimestamp: agg.minimumTimestamp,
+		MaximumTimestamp: agg.maximumTimestamp,
+		Average:          0,
+	}
+
+	// Calculate average with proper rounding
+	if agg.validCount > 0 {
+		result.Average = int(math.Round(float64(agg.dimensionSum) / float64(agg.validCount)))
+	}
+
+	return result
+}
+
 // AnalyzePosts orchestrates the complete analysis workflow.
 // Establishes a stream connection with a time-bounded context.
-// Collects all posts received within the specified duration.
-// Computes statistical analysis on the collected posts.
+// Posts are analyzed as they arrive using incremental computation (no memory storage required).
 func (a *StreamAnalyzer) AnalyzePosts(ctx context.Context, duration time.Duration, dimension string) (*models.AnalysisResult, error) {
 	// Create context with timeout for the analysis duration
 	analyzeCtx, cancel := context.WithTimeout(ctx, duration)
@@ -47,90 +114,41 @@ func (a *StreamAnalyzer) AnalyzePosts(ctx context.Context, duration time.Duratio
 		return nil, err
 	}
 
-	// Collect posts from the stream until either:
+	// Incrementally compute aggregate metrics from posts (no storage) until either:
 	// - The context timeout expires (after 'duration')
 	// - The stream encounters an error (parse, scanner, network)
 	// - The channel closes normally (unexpected, but handled)
-	posts, err := a.collectPosts(resultCh)
+	result, err := a.computeAnalysis(resultCh, dimension)
 
-	// Compute analysis on whatever posts we collected (even if empty or partial)
-	result := a.computeAnalysis(posts, dimension)
-
-	// Return result with collection error if one occurred
+	// Return result with post collection error if one occurred
 	if err != nil {
-		return result, fmt.Errorf("partial results (collected %d posts): %w", len(posts), err)
+		return result, fmt.Errorf("partial results (analyzed %d posts): %w", result.TotalPosts, err)
 	}
 
 	return result, nil
 }
 
-// collectPosts continuously reads from the result channel and gathers valid posts.
+// computeAnalysis computes analysis incrementally as posts arrive from the channel.
 // Blocks until the channel closes.
-func (a *StreamAnalyzer) collectPosts(resultCh <-chan StreamResult) ([]models.PostPayload, error) {
-	posts := make([]models.PostPayload, 0)
+// Memory usage: O(1) (only stores running totals, not the posts themselves)
+func (a *StreamAnalyzer) computeAnalysis(resultCh <-chan StreamResult, dimension string) (*models.AnalysisResult, error) {
+	// Create an aggregator (only stores statistics, not posts)
+	aggregator := newAggregator(dimension)
 
+	// Process each post as it arrives
 	for result := range resultCh {
-		// Stream error
+		// Handle stream error
 		if result.Err != nil {
-			return posts, result.Err
+			a.logger.Error("Stream error during analysis", "err", result.Err, "posts_processed", aggregator.totalPosts)
+			return aggregator.getResult(), result.Err
 		}
 
-		// Valid post
+		// Process valid post incrementally
 		if result.Post != nil {
-			posts = append(posts, *result.Post)
-			a.logger.Debug("Received post", "type", result.Post.Type, "data", fmt.Sprintf("%v", result.Post.Data))
+			aggregator.processPost(result.Post)
 		}
 	}
 
-	// Result channel closed cleanly
-	return posts, nil
-}
-
-// computeAnalysis computes aggregated metrics from collected posts
-func (a *StreamAnalyzer) computeAnalysis(posts []models.PostPayload, dimension string) *models.AnalysisResult {
-	// Handle the edge case where no posts were collected during the time window.
-	// This can happen if:
-	// - The stream had no data
-	// - All posts failed validation/parsing
-	// - The dimension filter excluded all posts
-	if len(posts) == 0 {
-		return &models.AnalysisResult{
-			TotalPosts:       0,
-			MinimumTimestamp: 0,
-			MaximumTimestamp: 0,
-			Average:          0,
-		}
-	}
-
-	result := &models.AnalysisResult{
-		TotalPosts:       len(posts),
-		MinimumTimestamp: posts[0].Data.Timestamp,
-		MaximumTimestamp: posts[0].Data.Timestamp,
-	}
-
-	var dimSum uint64
-	var validCount int64
-
-	for _, post := range posts {
-		// Update min and max timestamps
-		if post.Data.Timestamp < result.MinimumTimestamp {
-			result.MinimumTimestamp = post.Data.Timestamp
-		}
-		if post.Data.Timestamp > result.MaximumTimestamp {
-			result.MaximumTimestamp = post.Data.Timestamp
-		}
-
-		// Get dimension value
-		if dimValue, ok := post.GetDimensionValue(dimension); ok {
-			dimSum += dimValue
-			validCount++
-		}
-	}
-
-	// Calculate average with proper rounding
-	if validCount > 0 {
-		result.Average = int(math.Round(float64(dimSum) / float64(validCount)))
-	}
-
-	return result
+	// Return final computed result
+	return aggregator.getResult(), nil
 }
