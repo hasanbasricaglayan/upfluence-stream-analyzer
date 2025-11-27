@@ -466,11 +466,9 @@ func TestStreamAnalysisHandler_HandleAnalysis_Success(t *testing.T) {
 			if body["total_posts"] != float64(tc.mockResult.TotalPosts) {
 				t.Errorf("expected total_posts=%d, got %v", tc.mockResult.TotalPosts, body["total_posts"])
 			}
-
 			if body["minimum_timestamp"] != float64(tc.mockResult.MinimumTimestamp) {
 				t.Errorf("expected minimum_timestamp=%d, got %v", tc.mockResult.MinimumTimestamp, body["minimum_timestamp"])
 			}
-
 			if body["maximum_timestamp"] != float64(tc.mockResult.MaximumTimestamp) {
 				t.Errorf("expected maximum_timestamp=%d, got %v", tc.mockResult.MaximumTimestamp, body["maximum_timestamp"])
 			}
