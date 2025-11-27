@@ -168,7 +168,7 @@ func (c *StreamClient) handleEvent(ctx context.Context, event []byte, resultCh c
 	}
 
 	// Send post to the channel, respecting context cancellation.
-	// TODO: Handle the case when the channel is full due to high post throughput and/or slow post collection.
+	// TODO: Handle the case when the channel is full due to high post throughput and/or slow post analysis.
 	select {
 	case resultCh <- StreamResult{Post: &post}:
 		// Successfully sent

@@ -63,7 +63,7 @@ func (p *PostPayload) UnmarshalJSON(event []byte) error {
 
 		p.Data.Details = make(map[string]interface{})
 
-		// Iterate over valid dimensions and store only dimension fields (for analysis)
+		// Iterate over valid dimensions and track only dimension fields (for analysis)
 		for dim := range ValidDimensions {
 			// Check if dimension exists in post details
 			if val, ok := postDetails[dim]; ok {
