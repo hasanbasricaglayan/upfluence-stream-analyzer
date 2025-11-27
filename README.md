@@ -3,7 +3,7 @@ An HTTP API server that consumes real-time social media posts from Upfluence's S
 
 
 ## Overview
-This application connects to Upfluence's public SSE endpoint, collects posts for a specified duration, and computes aggregated statistics (total count, timestamp range, and dimensional averages) on social media posts.
+This application connects to Upfluence's public SSE endpoint, collects posts for a specified duration, and computes aggregate statistics (total count, timestamp range, and dimensional averages) on social media posts.
 
 **Key Features:**
 - Real-time SSE stream consumption with graceful error handling
@@ -32,7 +32,7 @@ The application follows a **service-oriented architecture (SOA)** with clear sep
 
 - **StreamAnalyzer**: Performs statistical analysis
   - Collects posts from result channel
-  - Computes aggregated metrics
+  - Computes aggregate metrics
   - Handles edge cases (empty results, missing dimensions)
 
 ### 3. **Model Layer** (`internal/models`)
@@ -124,7 +124,7 @@ Posts are collected in memory (`[]models.PostPayload`) during analysis following
 
 **Cons:**
 - Memory usage scales with post volume
-- No persistence of aggregated results
+- No persistence of aggregate results
 
 **If scaling needed:** Could stream processing with incremental aggregation to avoid storing all posts.
 
