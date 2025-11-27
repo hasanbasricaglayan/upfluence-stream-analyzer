@@ -18,6 +18,9 @@ type mockStreamService struct {
 	readEventsFn func(ctx context.Context) (<-chan StreamResult, error)
 }
 
+// Check interface implementation at compile-time
+var _ StreamService = &mockStreamService{}
+
 func (m *mockStreamService) ReadEvents(ctx context.Context) (<-chan StreamResult, error) {
 	if m.readEventsFn != nil {
 		return m.readEventsFn(ctx)
