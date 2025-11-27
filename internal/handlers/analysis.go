@@ -46,8 +46,7 @@ func (h *StreamAnalysisHandler) HandleAnalysis(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 	result, err := h.streamAnalyzer.AnalyzePosts(ctx, duration, dimension)
 	if err != nil {
-		h.logger.Error("Failed to perform analysis on posts", "err", err.Error())
-		h.sendError(w, http.StatusInternalServerError, "failed to analyze stream")
+		h.sendError(w, http.StatusInternalServerError, fmt.Errorf("failed to analyze stream: %w", err).Error())
 		return
 	}
 
@@ -103,8 +102,7 @@ func (h *StreamAnalysisHandler) sendResponse(w http.ResponseWriter, dimension st
 
 	respBytes, err := json.Marshal(resp)
 	if err != nil {
-		h.logger.Error("Failed to marshal result response", "err", err.Error())
-		h.sendError(w, http.StatusInternalServerError, "failed to encode result response")
+		h.sendError(w, http.StatusInternalServerError, fmt.Errorf("failed to encode result response: %w", err).Error())
 		return
 	}
 

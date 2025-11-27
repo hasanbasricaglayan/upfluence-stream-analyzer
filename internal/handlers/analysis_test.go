@@ -351,7 +351,7 @@ func TestStreamAnalysisHandler_HandleAnalysis_ServiceError(t *testing.T) {
 			}
 
 			// Assert error message
-			if errMessage != "failed to analyze stream" {
+			if !(strings.Contains(errMessage, "failed to analyze stream")) {
 				t.Errorf("expected error 'failed to analyze stream', got %q", errMessage)
 			}
 		})
