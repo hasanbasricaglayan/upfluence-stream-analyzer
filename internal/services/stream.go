@@ -105,7 +105,7 @@ func (c *StreamClient) readStream(ctx context.Context, body io.ReadCloser, resul
 		c.logger.Info("Stream ended normally")
 
 	case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
-		// Context cancellation is normal and expected (due to duration parameter)
+		// Context cancellation is normal and expected (due to 'duration' parameter)
 		c.logger.Info("Stream connection stopped", "reason", err.Error())
 
 	default:
@@ -167,7 +167,8 @@ func (c *StreamClient) handleEvent(ctx context.Context, event []byte, resultCh c
 		return fmt.Errorf("parse error: %w", err)
 	}
 
-	// Send post to the channel, respecting context cancellation
+	// Send post to the channel, respecting context cancellation.
+	// TODO: Handle the case when the channel is full due to high post throughput and/or slow post collection.
 	select {
 	case resultCh <- StreamResult{Post: &post}:
 		// Successfully sent
