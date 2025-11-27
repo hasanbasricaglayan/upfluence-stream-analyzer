@@ -52,25 +52,16 @@ func (a *StreamAnalyzer) AnalyzePosts(ctx context.Context, duration time.Duratio
 	// - The stream encounters an error (parse, scanner, network)
 	// - The channel closes normally (unexpected, but handled)
 	posts, err := a.collectPosts(resultCh)
+
+	// Compute analysis on whatever posts we collected (even if empty or partial)
+	result := a.computeAnalysis(posts, dimension)
+
+	// Return result with collection error if one occurred
 	if err != nil {
-		return nil, fmt.Errorf("failed to collect posts: %w", err)
+		return result, fmt.Errorf("partial results (collected %d posts): %w", len(posts), err)
 	}
 
-	// Handle the case where no posts were collected during the time window.
-	// This can happen if:
-	// - The stream had no data
-	// - All posts failed validation/parsing
-	// - The dimension filter excluded all posts
-	if len(posts) == 0 {
-		return &models.AnalysisResult{
-			TotalPosts:       0,
-			MinimumTimestamp: 0,
-			MaximumTimestamp: 0,
-			Average:          0,
-		}, nil
-	}
-
-	return a.computeAnalysis(posts, dimension), nil
+	return result, nil
 }
 
 // collectPosts continuously reads from the result channel and gathers valid posts.
@@ -97,7 +88,11 @@ func (a *StreamAnalyzer) collectPosts(resultCh <-chan StreamResult) ([]models.Po
 
 // computeAnalysis computes aggregated metrics from collected posts
 func (a *StreamAnalyzer) computeAnalysis(posts []models.PostPayload, dimension string) *models.AnalysisResult {
-	// Handle edge case if this function is called directly
+	// Handle the edge case where no posts were collected during the time window.
+	// This can happen if:
+	// - The stream had no data
+	// - All posts failed validation/parsing
+	// - The dimension filter excluded all posts
 	if len(posts) == 0 {
 		return &models.AnalysisResult{
 			TotalPosts:       0,
