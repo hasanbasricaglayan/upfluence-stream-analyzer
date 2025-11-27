@@ -38,12 +38,12 @@ func testLogger() *slog.Logger {
 
 func TestStreamAnalysisHandler_ParseParams(t *testing.T) {
 	tests := []struct {
-		name              string
-		queryParams       string
-		isError           bool
-		expectedDuration  time.Duration
-		expectedDimension string
-		expectedErr       string
+		name               string
+		queryParams        string
+		isError            bool
+		expectedDuration   time.Duration
+		expectedDimension  string
+		expectedErrMessage string
 	}{
 		{
 			name:              "valid seconds duration",
@@ -74,40 +74,40 @@ func TestStreamAnalysisHandler_ParseParams(t *testing.T) {
 			expectedDimension: "retweets",
 		},
 		{
-			name:        "missing duration",
-			queryParams: "dimension=likes",
-			isError:     true,
-			expectedErr: "missing required parameter: duration",
+			name:               "missing duration",
+			queryParams:        "dimension=likes",
+			isError:            true,
+			expectedErrMessage: "missing required parameter: duration",
 		},
 		{
-			name:        "invalid duration",
-			queryParams: "duration=invalid&dimension=likes",
-			isError:     true,
-			expectedErr: "invalid duration format",
+			name:               "invalid duration",
+			queryParams:        "duration=invalid&dimension=likes",
+			isError:            true,
+			expectedErrMessage: "invalid duration format",
 		},
 		{
-			name:        "negative duration",
-			queryParams: "duration=-10s&dimension=likes",
-			isError:     true,
-			expectedErr: "duration must be positive",
+			name:               "negative duration",
+			queryParams:        "duration=-10s&dimension=likes",
+			isError:            true,
+			expectedErrMessage: "duration must be positive",
 		},
 		{
-			name:        "zero duration",
-			queryParams: "duration=0&dimension=likes",
-			isError:     true,
-			expectedErr: "duration must be positive",
+			name:               "zero duration",
+			queryParams:        "duration=0&dimension=likes",
+			isError:            true,
+			expectedErrMessage: "duration must be positive",
 		},
 		{
-			name:        "missing dimension",
-			queryParams: "duration=30s",
-			isError:     true,
-			expectedErr: "missing required parameter: dimension",
+			name:               "missing dimension",
+			queryParams:        "duration=30s",
+			isError:            true,
+			expectedErrMessage: "missing required parameter: dimension",
 		},
 		{
-			name:        "invalid dimension",
-			queryParams: "duration=30s&dimension=shares",
-			isError:     true,
-			expectedErr: "invalid dimension",
+			name:               "invalid dimension",
+			queryParams:        "duration=30s&dimension=shares",
+			isError:            true,
+			expectedErrMessage: "invalid dimension",
 		},
 	}
 
@@ -124,10 +124,10 @@ func TestStreamAnalysisHandler_ParseParams(t *testing.T) {
 			if tc.isError {
 				if err == nil {
 					t.Error("expected error but got nil")
-				} else if tc.expectedErr != "" {
+				} else if tc.expectedErrMessage != "" {
 					errMessage := err.Error()
-					if !strings.Contains(errMessage, tc.expectedErr) {
-						t.Errorf("expected error to contain %q, got %q", tc.expectedErr, errMessage)
+					if !strings.Contains(errMessage, tc.expectedErrMessage) {
+						t.Errorf("expected error to contain %q, got %q", tc.expectedErrMessage, errMessage)
 					}
 				}
 			} else {
@@ -147,52 +147,52 @@ func TestStreamAnalysisHandler_ParseParams(t *testing.T) {
 
 func TestStreamAnalysisHandler_HandleAnalysis_ValidationErrors(t *testing.T) {
 	tests := []struct {
-		name           string
-		queryParams    string
-		expectedStatus int
-		expectedErr    string
+		name               string
+		queryParams        string
+		expectedStatus     int
+		expectedErrMessage string
 	}{
 		{
-			name:           "missing duration parameter",
-			queryParams:    "dimension=likes",
-			expectedStatus: http.StatusBadRequest,
-			expectedErr:    "missing required parameter: duration",
+			name:               "missing duration parameter",
+			queryParams:        "dimension=likes",
+			expectedStatus:     http.StatusBadRequest,
+			expectedErrMessage: "missing required parameter: duration",
 		},
 		{
-			name:           "invalid duration format",
-			queryParams:    "duration=invalid&dimension=likes",
-			expectedStatus: http.StatusBadRequest,
-			expectedErr:    "invalid duration format",
+			name:               "invalid duration format",
+			queryParams:        "duration=invalid&dimension=likes",
+			expectedStatus:     http.StatusBadRequest,
+			expectedErrMessage: "invalid duration format",
 		},
 		{
-			name:           "negative duration",
-			queryParams:    "duration=-30s&dimension=likes",
-			expectedStatus: http.StatusBadRequest,
-			expectedErr:    "duration must be positive",
+			name:               "negative duration",
+			queryParams:        "duration=-30s&dimension=likes",
+			expectedStatus:     http.StatusBadRequest,
+			expectedErrMessage: "duration must be positive",
 		},
 		{
-			name:           "zero duration",
-			queryParams:    "duration=0s&dimension=likes",
-			expectedStatus: http.StatusBadRequest,
-			expectedErr:    "duration must be positive",
+			name:               "zero duration",
+			queryParams:        "duration=0s&dimension=likes",
+			expectedStatus:     http.StatusBadRequest,
+			expectedErrMessage: "duration must be positive",
 		},
 		{
-			name:           "missing dimension parameter",
-			queryParams:    "duration=30s",
-			expectedStatus: http.StatusBadRequest,
-			expectedErr:    "missing required parameter: dimension",
+			name:               "missing dimension parameter",
+			queryParams:        "duration=30s",
+			expectedStatus:     http.StatusBadRequest,
+			expectedErrMessage: "missing required parameter: dimension",
 		},
 		{
-			name:           "invalid dimension",
-			queryParams:    "duration=30s&dimension=invalid",
-			expectedStatus: http.StatusBadRequest,
-			expectedErr:    "invalid dimension",
+			name:               "invalid dimension",
+			queryParams:        "duration=30s&dimension=invalid",
+			expectedStatus:     http.StatusBadRequest,
+			expectedErrMessage: "invalid dimension",
 		},
 		{
-			name:           "dimension with wrong case",
-			queryParams:    "duration=30s&dimension=Likes",
-			expectedStatus: http.StatusBadRequest,
-			expectedErr:    "invalid dimension",
+			name:               "dimension with wrong case",
+			queryParams:        "duration=30s&dimension=Likes",
+			expectedStatus:     http.StatusBadRequest,
+			expectedErrMessage: "invalid dimension",
 		},
 	}
 
@@ -229,12 +229,12 @@ func TestStreamAnalysisHandler_HandleAnalysis_ValidationErrors(t *testing.T) {
 			// Assert error field is present
 			errMessage, ok := body["error"].(string)
 			if !ok {
-				t.Fatalf("expected error field in response")
+				t.Fatal("expected error field in response")
 			}
 
 			// Check if error message contains expected text
-			if !strings.Contains(errMessage, tc.expectedErr) {
-				t.Errorf("expected error to contain %q, got %q", tc.expectedErr, errMessage)
+			if !strings.Contains(errMessage, tc.expectedErrMessage) {
+				t.Errorf("expected error to contain %q, got %q", tc.expectedErrMessage, errMessage)
 			}
 		})
 	}
@@ -281,7 +281,7 @@ func TestStreamAnalysisHandler_HandleAnalysis_MethodNotAllowed(t *testing.T) {
 			// Assert error field is present
 			errMessage, ok := body["error"].(string)
 			if !ok {
-				t.Fatalf("expected error field in response")
+				t.Fatal("expected error field in response")
 			}
 
 			// Assert error message
@@ -347,7 +347,7 @@ func TestStreamAnalysisHandler_HandleAnalysis_ServiceError(t *testing.T) {
 			// Assert error field is present
 			errMessage, ok := body["error"].(string)
 			if !ok {
-				t.Fatalf("expected error field in response")
+				t.Fatal("expected error field in response")
 			}
 
 			// Assert error message
