@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"upfluence-stream-analyzer/internal/models"
-	"upfluence-stream-analyzer/internal/services"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/models"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/services"
 )
 
 // StreamAnalysisHandler handles HTTP requests for stream analysis

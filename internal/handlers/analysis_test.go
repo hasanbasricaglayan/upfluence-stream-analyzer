@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"upfluence-stream-analyzer/internal/models"
-	"upfluence-stream-analyzer/internal/services"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/models"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/services"
 )
 
 // mockAnalyzerService is a mock implementation of the Analyzer Service for testing

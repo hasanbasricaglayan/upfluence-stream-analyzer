@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"upfluence-stream-analyzer/internal/models"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/models"
 )
 
 // mockStreamService is a mock implementation of the Stream Service for testing

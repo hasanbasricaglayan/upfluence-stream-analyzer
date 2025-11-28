@@ -7,7 +7,7 @@ import (
 	"math"
 	"time"
 
-	"upfluence-stream-analyzer/internal/models"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/models"
 )
 
 // AnalyzerService defines the analyzer service interface

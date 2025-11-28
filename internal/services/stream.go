@@ -10,7 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"upfluence-stream-analyzer/internal/models"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/models"
 )
 
 // StreamResult wraps either a post or an error from the stream

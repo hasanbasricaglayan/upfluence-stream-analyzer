@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"upfluence-stream-analyzer/config"
-	"upfluence-stream-analyzer/internal/handlers"
-	"upfluence-stream-analyzer/internal/services"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/config"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/handlers"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/internal/services"
 )
 
 // New creates and initializes a new application instance with all dependencies

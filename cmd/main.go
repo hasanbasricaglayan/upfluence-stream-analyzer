@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"upfluence-stream-analyzer/config"
+	"github.com/hasanbasricaglayan/upfluence-stream-analyzer/config"
 )
 
 // application holds the application configuration and dependencies
