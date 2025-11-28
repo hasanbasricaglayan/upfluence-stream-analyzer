@@ -213,12 +213,11 @@ The repository includes a `config.example.json` file as a template in `config`. 
 
 ### Running the Server
 ```bash
-# Run directly
-go run cmd/main.go
+# Run
+make run
 
-# Or build and run
-go build -o stream-analyzer cmd/main.go
-./stream-analyzer
+# Build
+make build
 ```
 
 ### Testing the API
@@ -253,7 +252,7 @@ curl "http://localhost:8080/analysis?duration=45s&dimension=favorites"
 The server handles shutdown signals gracefully:
 ```bash
 # Start the server
-./stream-analyzer
+make run
 
 # In another terminal, make a long request
 curl "http://localhost:8080/analysis?duration=60s&dimension=likes"

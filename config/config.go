@@ -23,7 +23,7 @@ type ServerConfig struct {
 
 func Load(cfg *Config) error {
 	// Open the configuration file
-	cfgFile, err := os.Open("../config/config.json")
+	cfgFile, err := os.Open("./config/config.json")
 	if err != nil {
 		return fmt.Errorf("failed to open config: %w", err)
 	}
