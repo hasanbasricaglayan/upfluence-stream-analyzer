@@ -3,7 +3,7 @@ An HTTP API server that consumes real-time social media posts from Upfluence's S
 
 
 ## Overview
-This application connects to Upfluence's public SSE endpoint, collects posts for a specified duration, and computes aggregate statistics (total count, timestamp range, and dimensional averages) on social media posts.
+This application connects to Upfluence's public SSE endpoint, collects and computes aggregate statistics (total count, timestamp range, and dimensional averages) on social media posts for a specified duration.
 
 **Key Features:**
 - Real-time SSE stream consumption with graceful error handling
@@ -74,30 +74,35 @@ Posts flow through a buffered channel (`chan StreamResult`) from the stream read
 
 **Trade-off**: Channel buffer size (100) is a tuning parameter. Too small causes blocking; too large increases memory usage.
 
-### 4. **Error Handling Strategy**
+### 4. **Efficient Memory Usage**
+Statistics are computed on-the-fly without storing posts in memory.
+
+Memory usage: O(1) instead of O(N), where N = number of analyzed posts
+
+### 5. **Error Handling Strategy**
 - **Connection errors**: Fail fast, return immediately
 - **Context cancellation**: Expected behavior, not an error
 - **Stream and parse errors**: Propagated through result channel, return with partial results
 
 This allows clients to make informed decisions about partial data.
 
-### 5. **Context-Driven Cancellation**
+### 6. **Context-Driven Cancellation**
 Uses Go's `context.Context` throughout for timeout and cancellation propagation.
 When duration expires or shutdown occurs, cancellation propagates automatically through all layers.
 
-### 6. **Graceful Shutdown with BaseContext**
+### 7. **Graceful Shutdown with BaseContext**
 The HTTP server uses `BaseContext` to propagate shutdown signals to all active requests.
 
 **Flow:**
 1. OS signal received (`SIGINT`/`SIGTERM`)
-2. Base context cancelled → All request contexts cancelled
+2. Base context cancelled -> All request contexts cancelled
 3. In-flight requests detect cancellation and clean up
 4. Server waits up to 30s for requests to complete
 5. Clean shutdown
 
 This ensures no requests are abruptly terminated and stream connections are properly closed.
 
-### 7. **Structured Logging**
+### 8. **Structured Logging**
 Uses `log/slog` (Go 1.21+) for structured logging.
 
 
@@ -111,29 +116,15 @@ The API blocks for the entire `duration` parameter.
 - Easy to understand and debug
 
 **Cons:**
-- Ties up server resources during collection
+- Ties up server resources during analysis
 - Not suitable for very long durations
 
-### 2. **In-Memory Collection**
-Posts are collected in memory (`[]models.PostPayload`) during analysis following a selective storage as it only needs timestamps and dimensions (`likes`, `comments`, `favorites`, `retweets`).
-
-**Pros:**
-- Fast computation (no I/O)
-- Simple implementation
-- Smaller memory footprint (doesn't store unnecessary fields like `id`, `text`, `author`)
-
-**Cons:**
-- Memory usage scales with post volume
-- No persistence of aggregate results
-
-**If scaling needed:** Could stream processing with incremental aggregation to avoid storing all posts.
-
-### 3. **Single-Threaded Analysis**
+### 2. **Single-Threaded Analysis**
 Each request is independent (no shared state) and processes posts sequentially in a single goroutine.
 
 **Scalability:** The HTTP server handles multiple concurrent requests naturally through Go's goroutine-per-request model.
 
-### 4. **Channel Buffer Size (100)**
+### 3. **Channel Buffer Size (100)**
 Buffer prevents blocking on temporary spikes.
 
 **Could adjust if:**
@@ -141,14 +132,14 @@ Buffer prevents blocking on temporary spikes.
 - Want more aggressive backpressure
 - Memory constraints require smaller buffer
 
-### 5. **No Request ID / Distributed Tracing**
-Currently logs use component-level context but not request-specific IDs.
+### 4. **No Request ID / Distributed Tracing**
+Currently, logs use component-level context but not request-specific IDs.
 
 **Left out for simplicity, but production would add:**
 - Request ID middleware
 - Correlation IDs in logs
 
-### 6. **Error Response Format**
+### 5. **Error Response Format**
 Simple JSON format sufficient for this use case: `{"error": "message"}`
 
 **Alternative considered:** Structured errors with codes
@@ -157,7 +148,7 @@ Simple JSON format sufficient for this use case: `{"error": "message"}`
   "error": {
     "code": "INVALID_DURATION",
     "message": "...",
-    "details": {...}
+    "details": "{...}"
   }
 }
 ```
@@ -166,9 +157,9 @@ Simple JSON format sufficient for this use case: `{"error": "message"}`
 ## What I Would Do Differently With More Time
 ### 1. **Channel Backpressure Handling**
 Currently, the stream client uses a fixed buffer size (100) for the result channel.
-Under high post throughput and/or slow collection, this buffer could fill up, causing the stream reader to block. This could lead to:
+Under high post throughput and/or slow post analysis, this buffer could fill up, causing the stream reader to block. This could lead to:
 - Temporary blocking when buffer is full
-- Potential data loss if upstream continues sending
+- Potential data loss if stream continues sending
 - Degraded performance under spike loads
 
 **Potential solutions:**
@@ -180,6 +171,12 @@ Under high post throughput and/or slow collection, this buffer could fill up, ca
   ```
 
 This is particularly important for production deployments expecting high-volume streams or running on resource-constrained environments.
+
+### 2. **Circuit Breaker**
+If Upfluence's SSE endpoint is down, implement:
+- Retry with exponential backoff
+- Circuit breaker pattern
+- Fallback responses
 
 
 ## Running the Project
@@ -210,7 +207,7 @@ The application uses a JSON-based configuration file for settings.
 - `server.port` - Port number for the HTTP server (default: `8080`)
 
 **Setup:**
-The repository includes a `config.example.json` file as a template in `config`. Copy it to create your own `config.json`. Do not forget to set the `stream.url` field.
+The repository includes a `config.example.json` file as a template in `config`. Copy it to create your own `config.json` in `config` folder. Do not forget to set the `stream.url` field.
 
 **Note:** `config.json` is gitignored to prevent accidentally committing sensitive or environment-specific settings. Always use `config.example.json` as the template.
 

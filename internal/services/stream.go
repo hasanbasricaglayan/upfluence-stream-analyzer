@@ -109,7 +109,7 @@ func (c *StreamClient) readStream(ctx context.Context, body io.ReadCloser, resul
 		c.logger.Info("Stream connection stopped", "reason", err.Error())
 
 	default:
-		// Anything else is an unexpected error (parse, scanner, network) and is sent to the collector
+		// Anything else is an unexpected error (parse, scanner, network) and is sent to the analyzer
 		c.logger.Error("Stream error", "err", err.Error())
 		resultCh <- StreamResult{Err: fmt.Errorf("stream error: %w", err)}
 	}
