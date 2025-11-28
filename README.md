@@ -77,7 +77,7 @@ Posts flow through a buffered channel (`chan StreamResult`) from the stream read
 ### 4. **Efficient Memory Usage**
 Statistics are computed on-the-fly without storing posts in memory.
 
-Memory usage: O(1) instead of O(N), where N = number of analyzed posts
+**Memory usage:** O(1) instead of O(N), where N = number of analyzed posts
 
 ### 5. **Error Handling Strategy**
 - **Connection errors**: Fail fast, return immediately
