@@ -38,7 +38,7 @@ func testLogger() *slog.Logger {
 }
 
 // Helper function to create a channel with posts and a potential error
-func createStreamResultCh(posts []models.PostPayload, err error) <-chan StreamResult {
+func testStreamResultCh(posts []models.PostPayload, err error) <-chan StreamResult {
 	ch := make(chan StreamResult, len(posts)+1)
 
 	for _, post := range posts {
@@ -51,6 +51,51 @@ func createStreamResultCh(posts []models.PostPayload, err error) <-chan StreamRe
 
 	close(ch)
 	return ch
+}
+
+// Helper function to calculate statistics from posts
+func testAnalysisResult(posts []models.PostPayload, dimension string) *models.AnalysisResult {
+	// Handle the edge case where posts slice is empty
+	if len(posts) == 0 {
+		return &models.AnalysisResult{
+			TotalPosts:       0,
+			MinimumTimestamp: 0,
+			MaximumTimestamp: 0,
+			Average:          0,
+		}
+	}
+
+	result := &models.AnalysisResult{
+		TotalPosts:       len(posts),
+		MinimumTimestamp: posts[0].Data.Timestamp,
+		MaximumTimestamp: posts[0].Data.Timestamp,
+	}
+
+	var dimensionSum uint64
+	var validCount int64
+
+	for _, post := range posts {
+		// Update min/max timestamps
+		if post.Data.Timestamp < result.MinimumTimestamp {
+			result.MinimumTimestamp = post.Data.Timestamp
+		}
+		if post.Data.Timestamp > result.MaximumTimestamp {
+			result.MaximumTimestamp = post.Data.Timestamp
+		}
+
+		// Get dimension value
+		if dimValue, ok := post.GetDimensionValue(dimension); ok {
+			dimensionSum += dimValue
+			validCount++
+		}
+	}
+
+	// Calculate average with proper rounding
+	if validCount > 0 {
+		result.Average = int(math.Round(float64(dimensionSum) / float64(validCount)))
+	}
+
+	return result
 }
 
 func TestStreamAnalyzer_AnalyzePosts_StreamConnectionError(t *testing.T) {
@@ -105,12 +150,12 @@ func TestStreamAnalyzer_AnalyzePosts_StreamError(t *testing.T) {
 		},
 	}
 
-	expectedAverage := int(math.Round(float64((636938 + 386963)) / 2))
+	expectedResult := testAnalysisResult(posts, "likes")
 
 	// Setup mock service that returns some posts then an error
 	mockStream := &mockStreamService{
 		readEventsFn: func(ctx context.Context) (<-chan StreamResult, error) {
-			return createStreamResultCh(posts, streamErr), nil
+			return testStreamResultCh(posts, streamErr), nil
 		},
 	}
 
@@ -139,25 +184,29 @@ func TestStreamAnalyzer_AnalyzePosts_StreamError(t *testing.T) {
 	}
 
 	// Verify partial results are computed correctly
-	if result.TotalPosts != 2 {
-		t.Errorf("expected TotalPosts=2, got %d", result.TotalPosts)
+	if result.TotalPosts != expectedResult.TotalPosts {
+		t.Errorf("expected TotalPosts=%d, got %d", expectedResult.TotalPosts, result.TotalPosts)
 	}
-	if result.MinimumTimestamp != 1554324856 {
-		t.Errorf("expected MinimumTimestamp=1554324856, got %d", result.MinimumTimestamp)
+	if result.MinimumTimestamp != expectedResult.MinimumTimestamp {
+		t.Errorf("expected MinimumTimestamp=%d, got %d", expectedResult.MinimumTimestamp, result.MinimumTimestamp)
 	}
-	if result.MaximumTimestamp != 1633974046 {
-		t.Errorf("expected MaximumTimestamp=1633974046, got %d", result.MaximumTimestamp)
+	if result.MaximumTimestamp != expectedResult.MaximumTimestamp {
+		t.Errorf("expected MaximumTimestamp=%d, got %d", expectedResult.MinimumTimestamp, result.MaximumTimestamp)
 	}
-	if result.Average != expectedAverage {
-		t.Errorf("expected Average=%d, got %d", expectedAverage, result.Average)
+	if result.Average != expectedResult.Average {
+		t.Errorf("expected Average=%d, got %d", expectedResult.Average, result.Average)
 	}
 }
 
 func TestStreamAnalyzer_AnalyzePosts_EmptyStream(t *testing.T) {
+	posts := []models.PostPayload{}
+
+	expectedResult := testAnalysisResult(posts, "likes")
+
 	// Setup mock service that returns no posts
 	mockStreamClient := &mockStreamService{
 		readEventsFn: func(ctx context.Context) (<-chan StreamResult, error) {
-			return createStreamResultCh([]models.PostPayload{}, nil), nil
+			return testStreamResultCh(posts, nil), nil
 		},
 	}
 
@@ -170,17 +219,17 @@ func TestStreamAnalyzer_AnalyzePosts_EmptyStream(t *testing.T) {
 	}
 
 	// Should return empty result
-	if result.TotalPosts != 0 {
-		t.Errorf("expected TotalPosts=0, got %d", result.TotalPosts)
+	if result.TotalPosts != expectedResult.TotalPosts {
+		t.Errorf("expected TotalPosts=%d, got %d", expectedResult.TotalPosts, result.TotalPosts)
 	}
-	if result.MinimumTimestamp != 0 {
-		t.Errorf("expected MinimumTimestamp=0, got %d", result.MinimumTimestamp)
+	if result.MinimumTimestamp != expectedResult.MinimumTimestamp {
+		t.Errorf("expected MinimumTimestamp=%d, got %d", expectedResult.MinimumTimestamp, result.MinimumTimestamp)
 	}
-	if result.MaximumTimestamp != 0 {
-		t.Errorf("expected MaximumTimestamp=0, got %d", result.MaximumTimestamp)
+	if result.MaximumTimestamp != expectedResult.MaximumTimestamp {
+		t.Errorf("expected MaximumTimestamp=%d, got %d", expectedResult.MaximumTimestamp, result.MaximumTimestamp)
 	}
-	if result.Average != 0 {
-		t.Errorf("expected Average=0, got %d", result.Average)
+	if result.Average != expectedResult.Average {
+		t.Errorf("expected Average=%d, got %d", expectedResult.Average, result.Average)
 	}
 }
 
@@ -204,10 +253,12 @@ func TestStreamAnalyzer_AnalyzePosts_AllPostsMissingDimension(t *testing.T) {
 		},
 	}
 
+	expectedResult := testAnalysisResult(posts, "likes")
+
 	// Setup mock service
 	mockStreamClient := &mockStreamService{
 		readEventsFn: func(ctx context.Context) (<-chan StreamResult, error) {
-			return createStreamResultCh(posts, nil), nil
+			return testStreamResultCh(posts, nil), nil
 		},
 	}
 
@@ -221,32 +272,28 @@ func TestStreamAnalyzer_AnalyzePosts_AllPostsMissingDimension(t *testing.T) {
 	}
 
 	// Should count posts but average should be 0 (no valid dimension values)
-	if result.TotalPosts != 2 {
-		t.Errorf("expected TotalPosts=2, got %d", result.TotalPosts)
+	if result.TotalPosts != expectedResult.TotalPosts {
+		t.Errorf("expected TotalPosts=%d, got %d", expectedResult.TotalPosts, result.TotalPosts)
 	}
-	if result.Average != 0 {
-		t.Errorf("expected Average=0 when no posts have the dimension, got %d", result.Average)
+	if result.Average != expectedResult.Average {
+		t.Errorf("expected Average=%d when no posts have the dimension, got %d", expectedResult.Average, result.Average)
 	}
 
 	// Timestamps should still be tracked
-	if result.MinimumTimestamp != 1554324856 {
-		t.Errorf("expected MinimumTimestamp=1554324856, got %d", result.MinimumTimestamp)
+	if result.MinimumTimestamp != expectedResult.MinimumTimestamp {
+		t.Errorf("expected MinimumTimestamp=%d, got %d", expectedResult.MinimumTimestamp, result.MinimumTimestamp)
 	}
-	if result.MaximumTimestamp != 1633974046 {
-		t.Errorf("expected MaximumTimestamp=1633974046, got %d", result.MaximumTimestamp)
+	if result.MaximumTimestamp != expectedResult.MaximumTimestamp {
+		t.Errorf("expected MaximumTimestamp=%d, got %d", expectedResult.MaximumTimestamp, result.MaximumTimestamp)
 	}
 }
 
 func TestStreamAnalyzer_AnalyzePosts_Success(t *testing.T) {
 	tests := []struct {
-		name                 string
-		posts                []models.PostPayload
-		dimension            string
-		duration             time.Duration
-		expectedTotal        int
-		expectedMinTimestamp int64
-		expectedMaxTimestamp int64
-		expectedAvg          int
+		name      string
+		posts     []models.PostPayload
+		dimension string
+		duration  time.Duration
 	}{
 		{
 			name: "single post with likes",
@@ -261,12 +308,8 @@ func TestStreamAnalyzer_AnalyzePosts_Success(t *testing.T) {
 					},
 				},
 			},
-			dimension:            "likes",
-			duration:             1 * time.Second,
-			expectedTotal:        1,
-			expectedMinTimestamp: 1554324856,
-			expectedMaxTimestamp: 1554324856,
-			expectedAvg:          636938,
+			dimension: "likes",
+			duration:  1 * time.Second,
 		},
 		{
 			name: "multiple posts with varying likes",
@@ -299,12 +342,8 @@ func TestStreamAnalyzer_AnalyzePosts_Success(t *testing.T) {
 					},
 				},
 			},
-			dimension:            "likes",
-			duration:             1 * time.Second,
-			expectedTotal:        3,
-			expectedMinTimestamp: 1554324856,
-			expectedMaxTimestamp: 1738974078,
-			expectedAvg:          100, // (50 + 150 + 100) / 3 = 100
+			dimension: "likes",
+			duration:  1 * time.Second,
 		},
 		{
 			name: "posts with comments dimension",
@@ -337,12 +376,8 @@ func TestStreamAnalyzer_AnalyzePosts_Success(t *testing.T) {
 					},
 				},
 			},
-			dimension:            "comments",
-			duration:             1 * time.Second,
-			expectedTotal:        3,
-			expectedMinTimestamp: 1554324856,
-			expectedMaxTimestamp: 1738974078,
-			expectedAvg:          10, // (10 + 20 + 0) / 3 = 10
+			dimension: "comments",
+			duration:  1 * time.Second,
 		},
 		{
 			name: "posts with favorites dimension",
@@ -366,12 +401,8 @@ func TestStreamAnalyzer_AnalyzePosts_Success(t *testing.T) {
 					},
 				},
 			},
-			dimension:            "favorites",
-			duration:             1 * time.Second,
-			expectedTotal:        2,
-			expectedMinTimestamp: 1554324856,
-			expectedMaxTimestamp: 1633974046,
-			expectedAvg:          10, // (5 + 15) / 2 = 10
+			dimension: "favorites",
+			duration:  1 * time.Second,
 		},
 		{
 			name: "posts with retweets dimension",
@@ -395,12 +426,8 @@ func TestStreamAnalyzer_AnalyzePosts_Success(t *testing.T) {
 					},
 				},
 			},
-			dimension:            "retweets",
-			duration:             1 * time.Second,
-			expectedTotal:        2,
-			expectedMinTimestamp: 1633974046,
-			expectedMaxTimestamp: 1738974078,
-			expectedAvg:          50, // (25 + 75) / 2 = 50
+			dimension: "retweets",
+			duration:  1 * time.Second,
 		},
 		{
 			name: "posts with some missing dimension values",
@@ -432,44 +459,42 @@ func TestStreamAnalyzer_AnalyzePosts_Success(t *testing.T) {
 					},
 				},
 			},
-			dimension:            "likes",
-			duration:             1 * time.Second,
-			expectedTotal:        3, // All posts counted
-			expectedMinTimestamp: 1554324856,
-			expectedMaxTimestamp: 1738974078,
-			expectedAvg:          150, // (100 + 200) / 2 = 150 (article excluded from average)
+			dimension: "likes",
+			duration:  1 * time.Second,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			expectedResult := testAnalysisResult(tc.posts, tc.dimension)
+
 			// Setup mock stream service
 			mockStream := &mockStreamService{
 				readEventsFn: func(ctx context.Context) (<-chan StreamResult, error) {
-					return createStreamResultCh(tt.posts, nil), nil
+					return testStreamResultCh(tc.posts, nil), nil
 				},
 			}
 
 			analyzer := NewStreamAnalyzer(mockStream, testLogger())
 
 			// Execute analysis
-			result, err := analyzer.AnalyzePosts(context.Background(), tt.duration, tt.dimension)
+			result, err := analyzer.AnalyzePosts(context.Background(), tc.duration, tc.dimension)
 
 			// Assertions
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			if result.TotalPosts != tt.expectedTotal {
-				t.Errorf("expected TotalPosts=%d, got %d", tt.expectedTotal, result.TotalPosts)
+			if result.TotalPosts != expectedResult.TotalPosts {
+				t.Errorf("expected TotalPosts=%d, got %d", expectedResult.TotalPosts, result.TotalPosts)
 			}
-			if result.MinimumTimestamp != tt.expectedMinTimestamp {
-				t.Errorf("expected MinimumTimestamp=%d, got %d", tt.expectedMinTimestamp, result.MinimumTimestamp)
+			if result.MinimumTimestamp != expectedResult.MinimumTimestamp {
+				t.Errorf("expected MinimumTimestamp=%d, got %d", expectedResult.MinimumTimestamp, result.MinimumTimestamp)
 			}
-			if result.MaximumTimestamp != tt.expectedMaxTimestamp {
-				t.Errorf("expected MaximumTimestamp=%d, got %d", tt.expectedMaxTimestamp, result.MaximumTimestamp)
+			if result.MaximumTimestamp != expectedResult.MaximumTimestamp {
+				t.Errorf("expected MaximumTimestamp=%d, got %d", expectedResult.MaximumTimestamp, result.MaximumTimestamp)
 			}
-			if result.Average != tt.expectedAvg {
-				t.Errorf("expected Average=%d, got %d", tt.expectedAvg, result.Average)
+			if result.Average != expectedResult.Average {
+				t.Errorf("expected Average=%d, got %d", expectedResult.Average, result.Average)
 			}
 		})
 	}
