@@ -213,6 +213,9 @@ The repository includes a `config.example.json` file as a template in `config`. 
 
 ### Running the Server
 ```bash
+# Test
+make test
+
 # Run
 make run
 
