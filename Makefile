@@ -1,4 +1,4 @@
-APP_NAME=uplfuence-stream-analyzer
+APP_NAME=upfluence-stream-analyzer
 BIN_DIR=bin
 CMD_DIR=cmd
 
