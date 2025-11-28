@@ -26,7 +26,6 @@ func TestStreamClient_NewStreamClient(t *testing.T) {
 	if client.logger != logger {
 		t.Error("expected logger to be set")
 	}
-
 	if client.httpClient == nil {
 		t.Fatal("expected non-nil http client")
 	}
@@ -53,8 +52,9 @@ func TestStreamClient_ReadEvents_ConnectionError(t *testing.T) {
 		t.Errorf("expected nil channel on connection error, got %v", resultCh)
 	}
 
-	if !strings.Contains(err.Error(), "failed to connect to stream") {
-		t.Errorf("expected error message to contain 'failed to connect to stream', got: %v", err)
+	expectedErrMessage := "failed to connect to stream"
+	if !strings.Contains(err.Error(), expectedErrMessage) {
+		t.Errorf("expected error message to contain %q, got: %v", expectedErrMessage, err)
 	}
 }
 
@@ -142,7 +142,7 @@ func TestStreamClient_ReadEvents_ContextDeadlineExceeded(t *testing.T) {
 
 	// Verify context deadline was exceeded
 	if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		t.Errorf("expected context deadline exceeded, got: %v", ctx.Err())
+		t.Errorf("expected %v, got: %v", context.DeadlineExceeded, ctx.Err())
 	}
 }
 
@@ -198,7 +198,7 @@ func TestStreamClient_ReadEvents_ContextCancellation(t *testing.T) {
 
 	// Verify context cancellation
 	if !errors.Is(ctx.Err(), context.Canceled) {
-		t.Errorf("expected context canceled, got: %v", ctx.Err())
+		t.Errorf("expected %v, got: %v", context.Canceled, ctx.Err())
 	}
 }
 
@@ -398,7 +398,7 @@ func TestStreamClient_ReadEvents_ChannelBuffer(t *testing.T) {
 		if result.Post != nil {
 			posts++
 		}
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 	}
 
 	// Should receive at least 100 posts despite slow consumption
