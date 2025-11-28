@@ -191,13 +191,13 @@ The application uses a JSON-based configuration file for settings.
 **Default configuration file: `config.json`**
 ```json
 {
-	"stream": {
-		"url": "UpfluenceStreamURL"
-	},
-	"server": {
-		"host": "localhost",
-		"port": 8080
-	}
+  "stream": {
+    "url": "UpfluenceStreamURL"
+  },
+  "server": {
+    "host": "localhost",
+    "port": 8080
+    }
 }
 ```
 
@@ -210,7 +210,6 @@ The application uses a JSON-based configuration file for settings.
 The repository includes a `config.example.json` file as a template in `config`. Copy it to create your own `config.json` in `config` folder. Do not forget to set the `stream.url` field.
 
 **Note:** `config.json` is gitignored to prevent accidentally committing sensitive or environment-specific settings. Always use `config.example.json` as the template.
-
 
 ### Running the Server
 ```bash
