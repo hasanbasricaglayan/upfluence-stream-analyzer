@@ -1,6 +1,6 @@
 {
 	"stream": {
-		"url": "UpfluenceStreamURL"
+		"url": "https://stream.upfluence.co/stream"
 	},
 	"server": {
 		"host": "localhost",
