@@ -264,6 +264,6 @@ curl "http://localhost:8080/analysis?duration=60s&dimension=likes"
 # Server will:
 # 1. Stop accepting new connections
 # 2. Cancel all active request contexts
-# 3. Wait up to 30s for in-flight requests to complete
+# 3. Wait up to 10s for in-flight requests to complete
 # 4. Clean up and exit
 ```
